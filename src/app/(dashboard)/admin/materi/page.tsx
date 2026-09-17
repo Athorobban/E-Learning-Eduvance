@@ -1,9 +1,14 @@
+import QueryProvider from "@/providers/query-provider";
 import MateriManagement from "./_components/materi";
 
 export const metadata = {
-  title: "E-Learningku | Materi Management",
+  title: "E-Learning Eduvance | Materi Management",
 };
 
 export default function MateriManagementPage() {
-  return <MateriManagement />;
+  return (
+    <QueryProvider>
+      <MateriManagement />
+    </QueryProvider>
+  );
 }

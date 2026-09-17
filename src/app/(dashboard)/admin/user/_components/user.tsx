@@ -20,6 +20,7 @@ import DialogDeleteUser from "./dialog-delete-user";
 export default function UserManagement() {
   const supabase = createClient();
   const { currentPage, currentLimit, currentSearch, handleChangePage, handleChangeLimit, handleChangeSearch } = useDataTable();
+
   const {
     data: users,
     isLoading,
@@ -30,12 +31,14 @@ export default function UserManagement() {
       const result = await supabase
         .from("profiles")
         .select("*", { count: "exact" })
+        // BENAR: Gunakan .in() untuk array
+        .in("role", ["Admin", "Guru", "Siswa"])
         .range((currentPage - 1) * currentLimit, currentPage * currentLimit - 1)
         .order("created_at")
         .ilike("name", `%${currentSearch}%`);
 
       if (result.error)
-        toast.error("Get User data failed", {
+        toast.error("Gagal mengambil data User", {
           description: result.error.message,
         });
 
@@ -64,7 +67,7 @@ export default function UserManagement() {
             {
               label: (
                 <span className="flex item-center gap-2">
-                  <Pencil />
+                  <Pencil className="w-4 h-4" />
                   Edit
                 </span>
               ),
@@ -78,7 +81,7 @@ export default function UserManagement() {
             {
               label: (
                 <span className="flex item-center gap-2">
-                  <Trash2 className="text-red-400" />
+                  <Trash2 className="w-4 h-4 text-red-400" />
                   Delete
                 </span>
               ),
@@ -103,7 +106,7 @@ export default function UserManagement() {
   return (
     <div className="w-full">
       <div className="flex flex-col lg:flex-row mb-4 gap-2 justify-between w-full">
-        <h1 className="text-2xl font-bold">User Management</h1>
+        <h1 className="text-4xl font-bold text-primary">Dashboard User</h1>
         <div className="flex gap-2">
           <Input placeholder="Search by name" onChange={(e) => handleChangeSearch(e.target.value)} />
           <Dialog>
@@ -115,8 +118,9 @@ export default function UserManagement() {
         </div>
       </div>
       <DataTable header={HEADER_TABLE_USER} data={filteredData} isLoading={isLoading} totalPages={totalPages} currentPage={currentPage} currentLimit={currentLimit} onChangePage={handleChangePage} onChangeLimit={handleChangeLimit} />
-      <DialogUpdateUser open={selectedAction !== null && selectedAction.type === "update"} refetch={refetch} currentData={selectedAction?.data} handleChangeAction={handleChangeAction} />
-      <DialogDeleteUser open={selectedAction !== null && selectedAction.type === "delete"} refetch={refetch} currentData={selectedAction?.data} handleChangeAction={handleChangeAction} />
+
+      <DialogUpdateUser open={selectedAction?.type === "update"} refetch={refetch} currentData={selectedAction?.data || ({} as Profile)} handleChangeAction={handleChangeAction} />
+      <DialogDeleteUser open={selectedAction?.type === "delete"} refetch={refetch} currentData={selectedAction?.data || ({} as Profile)} handleChangeAction={handleChangeAction} />
     </div>
   );
 }

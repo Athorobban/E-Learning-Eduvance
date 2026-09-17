@@ -1,4 +1,4 @@
-import AppSidebar from "@/components/common/app-sidebar";
+import { AppSidebar } from "@/components/common/app-sidebar";
 import { Separator } from "@/components/ui/separator";
 import { SidebarInset, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { ReactNode } from "react";

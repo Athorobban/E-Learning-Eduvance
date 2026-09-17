@@ -1,170 +1,98 @@
 "use server";
 
-import { deleteFile, uploadFile } from "@/actions/storage-action";
-import { createClient } from "@/lib/supabase/server";
+import { createClient } from "@supabase/supabase-js";
+import { revalidatePath } from "next/cache";
 import { AuthFormState } from "@/types/auth";
-import { createUserSchema, updateUserSchema } from "@/validations/auth-validation";
+import { INITIAL_STATE_CREATE_USER, INITIAL_STATE_UPDATE_USER } from "@/constants/auth-constant";
+import { INITIAL_STATE_ACTION } from "@/constants/general-constant";
 
-export async function createUser(prevState: AuthFormState, formData: FormData) {
-  let validatedFields = createUserSchema.safeParse({
-    email: formData.get("email"),
-    password: formData.get("password"),
-    name: formData.get("name"),
-    role: formData.get("role"),
-    avatar_url: formData.get("avatar_url"),
-  });
+// ==========================================
+// 1. CREATE USER
+// ==========================================
+export async function createUser(prevState: AuthFormState, formData: FormData | null): Promise<AuthFormState> {
+  try {
+    if (!formData) return INITIAL_STATE_CREATE_USER;
 
-  if (!validatedFields.success) {
-    return {
-      status: "error",
-      errors: {
-        ...validatedFields.error.flatten().fieldErrors,
-        _form: [],
-      },
-    };
-  }
+    const email = formData.get("email") as string;
+    const password = formData.get("password") as string;
+    const name = formData.get("name") as string;
+    const role = formData.get("role") as string;
 
-  if (validatedFields.data.avatar_url instanceof File) {
-    const { errors, data } = await uploadFile("images", "users", validatedFields.data.avatar_url);
-    if (errors) {
+    // Inisialisasi client DI DALAM fungsi.
+    // Ini mencegah aplikasi mati total jika .env lupa di-setting.
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
+
+    if (!supabaseUrl || !supabaseKey) {
       return {
         status: "error",
-        errors: {
-          ...prevState.errors,
-          _form: [...errors._form],
-        },
+        errors: { _form: ["Kunci SUPABASE_PUBLISHABLE_KEY belum disetting di file .env"] },
       };
     }
 
-    validatedFields = {
-      ...validatedFields,
-      data: {
-        ...validatedFields.data,
-        avatar_url: data.url,
-      },
-    };
-  }
+    const supabaseAdmin = createClient(supabaseUrl, supabaseKey);
 
-  const supabase = await createClient();
+    const { error } = await supabaseAdmin.auth.admin.createUser({
+      email,
+      password,
+      email_confirm: true,
+      user_metadata: { name, role },
+    });
 
-  const { error } = await supabase.auth.signUp({
-    email: validatedFields.data.email,
-    password: validatedFields.data.password,
-    options: {
-      data: {
-        name: validatedFields.data.name,
-        role: validatedFields.data.role,
-        avatar_url: validatedFields.data.avatar_url,
-      },
-    },
-  });
-
-  if (error) {
-    return {
-      status: "error",
-      errors: {
-        ...prevState.errors,
-        _form: [error.message],
-      },
-    };
-  }
-
-  return {
-    status: "success",
-  };
-}
-
-export async function updateUser(prevState: AuthFormState, formData: FormData) {
-  let validatedFields = updateUserSchema.safeParse({
-    name: formData.get("name"),
-    role: formData.get("role"),
-    avatar_url: formData.get("avatar_url"),
-  });
-
-  if (!validatedFields.success) {
-    return {
-      status: "error",
-      errors: {
-        ...validatedFields.error.flatten().fieldErrors,
-        _form: [],
-      },
-    };
-  }
-
-  if (validatedFields.data.avatar_url instanceof File) {
-    const oldAvatarUrl = formData.get("old_avatar_url") as string;
-    const { errors, data } = await uploadFile("images", "users", validatedFields.data.avatar_url, oldAvatarUrl.split("/images/")[1]);
-    if (errors) {
-      return {
-        status: "error",
-        errors: {
-          ...prevState.errors,
-          _form: [...errors._form],
-        },
-      };
+    // Jika email sudah ada atau password kurang kuat, kembalikan error ke UI
+    if (error) {
+      return { status: "error", errors: { _form: [error.message] } };
     }
 
-    validatedFields = {
-      ...validatedFields,
-      data: {
-        ...validatedFields.data,
-        avatar_url: data.url,
-      },
-    };
+    revalidatePath("/admin/user", "page");
+    return { status: "success", errors: {} };
+  } catch (err: any) {
+    // Menangkap error jaringan/sistem yang tidak terduga
+    return { status: "error", errors: { _form: [err.message || "Terjadi kesalahan internal server"] } };
   }
-
-  const supabase = await createClient();
-
-  const { error } = await supabase
-    .from("profiles")
-    .update({
-      name: validatedFields.data.name,
-      role: validatedFields.data.role,
-      avatar_url: validatedFields.data.avatar_url,
-    })
-    .eq("id", formData.get("id"));
-
-  if (error) {
-    return {
-      status: "error",
-      errors: {
-        ...prevState.errors,
-        _form: [error.message],
-      },
-    };
-  }
-
-  return {
-    status: "success",
-  };
 }
 
-export async function deleteUser(prevState: AuthFormState, formData: FormData) {
-  const supabase = await createClient({ isAdmin: true });
-  const image = formData.get("avatar_url") as string;
-  const { status, errors } = await deleteFile("images", image.split("/images/")[1]);
+// ==========================================
+// 2. UPDATE USER
+// ==========================================
+export async function updateUser(prevState: AuthFormState, formData: FormData | null): Promise<AuthFormState> {
+  try {
+    if (!formData) return INITIAL_STATE_UPDATE_USER;
 
-  if (status === "error") {
-    return {
-      status: "error",
-      errors: {
-        ...prevState.errors,
-        _form: [errors?._form?.[0] ?? "Unknown error"],
-      },
-    };
+    const id = formData.get("id") as string;
+    const name = formData.get("name") as string;
+    const role = formData.get("role") as string;
+
+    const supabaseAdmin = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
+
+    const { error } = await supabaseAdmin.from("profiles").update({ name, role, updated_at: new Date().toISOString() }).eq("id", id);
+
+    if (error) return { status: "error", errors: { _form: [error.message] } };
+
+    revalidatePath("/admin/user", "page");
+    return { status: "success", errors: {} };
+  } catch (err: any) {
+    return { status: "error", errors: { _form: [err.message] } };
   }
+}
 
-  const { error } = await supabase.auth.admin.deleteUser(formData.get("id") as string);
+// ==========================================
+// 3. DELETE USER
+// ==========================================
+export async function deleteUser(prevState: any, formData: FormData | null) {
+  try {
+    if (!formData) return INITIAL_STATE_ACTION;
 
-  if (error) {
-    return {
-      status: "error",
-      errors: {
-        ...prevState.errors,
-        _form: [error.message],
-      },
-    };
+    const id = formData.get("id") as string;
+    const supabaseAdmin = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
+
+    const { error } = await supabaseAdmin.auth.admin.deleteUser(id);
+
+    if (error) return { status: "error", errors: { _form: [error.message] } };
+
+    revalidatePath("/admin/user", "page");
+    return { status: "success", errors: {} };
+  } catch (err: any) {
+    return { status: "error", errors: { _form: [err.message] } };
   }
-
-  return { status: "success" };
 }

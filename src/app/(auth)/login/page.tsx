@@ -1,7 +1,7 @@
 import Login from "./_components/login";
 
 export const metadata = {
-  title: "Finnotes App | Login",
+  title: "E-Learning - Eduvance | Login",
 };
 
 export default function LoginPage() {

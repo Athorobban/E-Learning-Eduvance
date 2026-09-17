@@ -73,8 +73,8 @@ export default function RegisterForm() {
               <Field className="space-y-2">
                 <FieldLabel>Peran</FieldLabel>
                 <select {...field} className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
-                  <option value="">Pilih peran</option>
-                  <option value="User">User</option>
+                  <option value="Guru">Guru</option>
+                  <option value="Siswa">Siswa</option>
                 </select>
                 <FieldError errors={[fieldState.error]} />
               </Field>

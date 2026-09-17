@@ -35,7 +35,7 @@ export const supabaseProxy = async (request: NextRequest) => {
   // KONDISI 1: USER BELUM LOGIN SAMA SEKALI
   // ==========================================
   if (!user) {
-    if (pathname.startsWith("/dashboard")) {
+    if (pathname.startsWith("/admin")) {
       const url = request.nextUrl.clone();
       url.pathname = "/login";
       return NextResponse.redirect(url); // Wajib di-return agar proses berhenti di sini
@@ -60,7 +60,7 @@ export const supabaseProxy = async (request: NextRequest) => {
     // Jika User biasa mencoba menyusup ke halaman Admin
     if (pathname.startsWith("/admin/user") && role !== "Admin") {
       const url = request.nextUrl.clone();
-      url.pathname = "/dashboard";
+      url.pathname = "/admin";
       return NextResponse.redirect(url);
     }
 

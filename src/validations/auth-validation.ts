@@ -10,13 +10,11 @@ export const createUserSchema = z.object({
   email: z.string().min(1, "Email wajib diisi").email("Masukkan format email yang benar"),
   password: z.string().min(6, "Password minimal 6 karakter"),
   role: z.string().min(1, "Role is required"),
-  avatar_url: z.union([z.string().optional(), z.instanceof(File).optional()]).optional(),
 });
 
 export const updateUserSchema = z.object({
   name: z.string().min(1, "Name is required"),
   role: z.string().min(1, "Role is required"),
-  avatar_url: z.union([z.string().min(1, "Image URL is required"), z.instanceof(File)]),
 });
 
 export type LoginForm = z.infer<typeof loginSchemaForm>;

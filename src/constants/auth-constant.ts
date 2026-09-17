@@ -51,7 +51,11 @@ export const ROLE_LIST = [
     label: "Admin",
   },
   {
-    value: "User",
-    label: "User",
+    value: "Guru",
+    label: "Guru",
+  },
+  {
+    value: "Siswa",
+    label: "Siswa",
   },
 ];

@@ -40,8 +40,18 @@ export async function signOut() {
 
   // 5. Lakukan redirect dinamis berdasarkan role yang sudah kita amankan di langkah 1
   if (userRole === "Admin") {
-    redirect("/login-admin");
+    redirect("/login");
   } else {
     redirect("/login");
   }
+}
+
+export async function getProfileFromCookie() {
+  const cookieStore = await cookies();
+  const profileString = cookieStore.get("user_profile")?.value;
+
+  if (profileString) {
+    return JSON.parse(profileString);
+  }
+  return null;
 }

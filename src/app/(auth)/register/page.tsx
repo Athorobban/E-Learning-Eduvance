@@ -1,7 +1,7 @@
 import RegisterForm from "./_components/register";
 
 export const metadata = {
-  title: "Finnotes App | Register",
+  title: "E-Learning - Eduvance | Register",
 };
 
 export default function RegisterPage() {

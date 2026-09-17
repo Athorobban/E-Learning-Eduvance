@@ -14,8 +14,6 @@ export default function FormUser<T extends FieldValues>({
   onSubmit,
   isLoading,
   type,
-  preview,
-  setPreview,
 }: {
   form: UseFormReturn<T>;
   onSubmit: (event: FormEvent<HTMLFormElement>) => void;
@@ -34,7 +32,6 @@ export default function FormUser<T extends FieldValues>({
       <form onSubmit={onSubmit} className="space-y-4">
         <FormInput form={form} name={"name" as Path<T>} label="Name" placeholder="Insert your name" />
         {type === "Create" && <FormInput form={form} name={"email" as Path<T>} label="Email" placeholder="Insert email here" type="email" />}
-        <FormImage form={form} name={"avatar_url" as Path<T>} label="Avatar" preview={preview} setPreview={setPreview} />
         <FormSelect form={form} name={"role" as Path<T>} label="Role" selectItem={ROLE_LIST} />
         {type === "Create" && <FormInput form={form} name={"password" as Path<T>} label="Password" placeholder="******" type="password" />}
 
