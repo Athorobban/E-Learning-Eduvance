@@ -7,7 +7,7 @@ type PageProps = {
   params: Promise<{ id: string }>;
 };
 
-export default function KerjakanKuisPage({ params }: PageProps) {
+export default function AnswerQuizPage({ params }: PageProps) {
   const { id } = use(params); // ✅ FIX
   const supabase = createClient();
   const [questions, setQuestions] = useState<any[]>([]);

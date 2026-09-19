@@ -7,7 +7,7 @@ type PageProps = {
   params: Promise<{ id: string }>;
 };
 
-export default function KerjakanTugasPage({ params }: PageProps) {
+export default function AnswerAssignmentPage({ params }: PageProps) {
   const { id } = use(params); // Next.js 16 fix
   const supabase = createClient();
 
