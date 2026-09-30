@@ -74,7 +74,7 @@ export const supabaseProxy = async (request: NextRequest) => {
     // Cegah user yang sudah login untuk mengakses halaman login lagi
     if (pathname === "/login" || pathname === "/login-admin") {
       const url = request.nextUrl.clone();
-      url.pathname = role === "Admin" ? "/admin/user" : "/dashboard";
+      url.pathname = role === "Admin" ? "/admin/user" : "/admin";
       return NextResponse.redirect(url);
     }
   }

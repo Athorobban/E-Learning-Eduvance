@@ -10,51 +10,64 @@ type PrevState = {
 };
 
 export async function createMateri(prevState: PrevState, formData: FormData) {
-  // parse and validate
-  let validated = materiSchema.safeParse({
-    judul: formData.get("judul"),
-    deskripsi: formData.get("deskripsi"),
-    kelas: formData.get("kelas"),
-    pertemuan: Number(formData.get("pertemuan")),
-    kategori: formData.get("kategori"),
-    video_url: formData.get("video_url"),
-    file_url: formData.get("file_url"),
-    thumbnail_url: formData.get("thumbnail_url"),
-  });
+  try {
+    let validated = materiSchema.safeParse({
+      judul: formData.get("judul"),
+      deskripsi: formData.get("deskripsi"),
+      kelas: formData.get("kelas"),
+      pertemuan: Number(formData.get("pertemuan")),
+      kategori: formData.get("kategori"),
+      video_url: formData.get("video_url"),
+      file_url: formData.get("file_url"),
+      thumbnail_url: formData.get("thumbnail_url"),
+    });
 
-  if (!validated.success) {
-    return { status: "error", errors: { ...validated.error.flatten().fieldErrors, _form: [] } };
+    if (!validated.success) {
+      return { status: "error", errors: { ...validated.error.flatten().fieldErrors, _form: [] } };
+    }
+
+    // upload file dokumen
+    if (validated.data.file_url instanceof File) {
+      const { data, errors } = await uploadFile("files", "materi/files", validated.data.file_url);
+      if (errors) return { status: "error", errors: { ...prevState.errors, _form: [...(errors._form || [])] } };
+      validated = { ...validated, data: { ...validated.data, file_url: data.url } };
+    }
+
+    // upload thumbnail
+    if (validated.data.thumbnail_url instanceof File) {
+      const { data, errors } = await uploadFile("images", "materi/thumbnails", validated.data.thumbnail_url);
+      if (errors) return { status: "error", errors: { ...prevState.errors, _form: [...(errors._form || [])] } };
+      validated = { ...validated, data: { ...validated.data, thumbnail_url: data.url } };
+    }
+
+    const supabase = await createClient();
+
+    // PENTING: Dapatkan ID user yang sedang login
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    const { error } = await supabase.from("materi").insert({
+      judul: validated.data.judul,
+      deskripsi: validated.data.deskripsi ?? null,
+      kelas: validated.data.kelas ?? null,
+      pertemuan: validated.data.pertemuan ?? null,
+      kategori: validated.data.kategori ?? null,
+      file_url: validated.data.file_url ?? null,
+      video_url: validated.data.video_url ?? null,
+      thumbnail_url: validated.data.thumbnail_url ?? null,
+      guru_id: user?.id,
+    });
+
+    if (error) {
+      return { status: "error", errors: { ...prevState.errors, _form: [error.message] } };
+    }
+
+    return { status: "success" };
+  } catch (err: any) {
+    // Tangkap error sistem yang tidak terduga
+    return { status: "error", errors: { ...prevState.errors, _form: [err.message || "Terjadi kesalahan internal server"] } };
   }
-
-  // upload file jika File
-  if (validated.data.file_url instanceof File) {
-    const { data, errors } = await uploadFile("files", "materi/files", validated.data.file_url);
-    if (errors) return { status: "error", errors: { ...prevState.errors, _form: [...(errors._form || [])] } };
-    validated = { ...validated, data: { ...validated.data, file_url: data.url } };
-  }
-
-  // upload thumbnail jika File
-  if (validated.data.thumbnail_url instanceof File) {
-    const { data, errors } = await uploadFile("images", "materi/thumbnails", validated.data.thumbnail_url);
-    if (errors) return { status: "error", errors: { ...prevState.errors, _form: [...(errors._form || [])] } };
-    validated = { ...validated, data: { ...validated.data, thumbnail_url: data.url } };
-  }
-
-  const supabase = await createClient();
-  const { error } = await supabase.from("materi").insert({
-    judul: validated.data.judul,
-    deskripsi: validated.data.deskripsi ?? null,
-    kelas: validated.data.kelas ?? null,
-    pertemuan: validated.data.pertemuan ?? null,
-    kategori: validated.data.kategori ?? null,
-    file_url: validated.data.file_url ?? null,
-    video_url: validated.data.video_url ?? null,
-    thumbnail_url: validated.data.thumbnail_url ?? null,
-  });
-
-  if (error) return { status: "error", errors: { ...prevState.errors, _form: [error.message] } };
-
-  return { status: "success" };
 }
 
 export async function updateMateri(prevState: PrevState, formData: FormData) {

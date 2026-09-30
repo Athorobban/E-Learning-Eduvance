@@ -15,65 +15,62 @@ export default function DialogCreateMateri({ refetch }: { refetch: () => void })
   });
 
   const [createMateriState, createMateriAction, isPendingCreateMateri] = useActionState(createMateri, INITIAL_STATE_MATERI);
-
   const [preview, setPreview] = useState<Preview | undefined>(undefined);
 
-  const onSubmit = form.handleSubmit((data) => {
-    const formData = new FormData();
+  const onSubmit = form.handleSubmit(
+    // 1. Callback jika validasi LOLOS (onValid)
+    (data) => {
+      const formData = new FormData();
+      const fileField = (data as any).file_url;
+      const thumbField = (data as any).thumbnail_url;
 
-    // ambil langsung value dari form (bukan hanya preview)
-    const fileField = (data as any).file_url;
-    const thumbField = (data as any).thumbnail_url;
+      // Logika File Dokumen
+      if (fileField instanceof File) formData.append("file_url", fileField);
+      else if (preview?.file instanceof File) formData.append("file_url", preview.file);
+      else if (typeof fileField === "string" && fileField.length) formData.append("file_url", fileField);
+      else formData.append("file_url", "");
 
-    // file dokumen: prioritas ke fileField (File), lalu previewFile, lalu kosong
-    if (fileField instanceof File) {
-      formData.append("file_url", fileField);
-    } else if (preview?.file instanceof File) {
-      formData.append("file_url", preview.file);
-    } else if (typeof fileField === "string" && fileField.length) {
-      formData.append("file_url", fileField);
-    } else {
-      formData.append("file_url", "");
-    }
+      // Logika Thumbnail
+      if (thumbField instanceof File) formData.append("thumbnail_url", thumbField);
+      else if (preview?.file instanceof File) formData.append("thumbnail_url", preview.file);
+      else if (typeof thumbField === "string" && thumbField.length) formData.append("thumbnail_url", thumbField);
+      else formData.append("thumbnail_url", "");
 
-    // thumbnail: prioritas ke thumbnail field (File), lalu previewThumbnail
-    if (thumbField instanceof File) {
-      formData.append("thumbnail_url", thumbField);
-    } else if (preview?.file instanceof File) {
-      formData.append("thumbnail_url", preview.file);
-    } else if (typeof thumbField === "string" && thumbField.length) {
-      formData.append("thumbnail_url", thumbField);
-    } else {
-      formData.append("thumbnail_url", "");
-    }
+      // Append data teks lainnya
+      const skip = new Set(["file_url", "thumbnail_url"]);
+      Object.entries(data).forEach(([k, v]) => {
+        if (skip.has(k)) return;
+        formData.append(k, String(v ?? ""));
+      });
 
-    // append fields lain (kecuali file fields)
-    const skip = new Set(["file_url", "thumbnail_url"]);
-    Object.entries(data).forEach(([k, v]) => {
-      if (skip.has(k)) return;
-      formData.append(k, String(v ?? ""));
-    });
-
-    startTransition(() => {
-      createMateriAction(formData);
-    });
-  });
+      startTransition(() => {
+        createMateriAction(formData);
+      });
+    },
+    // 2. Callback jika validasi GAGAL (onInvalid) -> Menangkap Silent Error
+    (errors) => {
+      const firstError = Object.values(errors)[0]?.message as string;
+      toast.error("Validasi Form Gagal", {
+        description: firstError || "Mohon periksa kembali inputan Anda.",
+      });
+    },
+  );
 
   useEffect(() => {
     if (createMateriState?.status === "error") {
-      toast.error("Create Menu Failed", {
+      toast.error("Gagal Menambahkan Materi", {
         description: createMateriState.errors?._form?.[0],
       });
     }
 
     if (createMateriState?.status === "success") {
-      toast.success("Create Menu Success");
+      toast.success("Materi Berhasil Ditambahkan!");
       form.reset();
       setPreview(undefined);
       document.querySelector<HTMLButtonElement>('[data-state="open"]')?.click();
       refetch();
     }
-  }, [createMateriState]);
+  }, [createMateriState, form, refetch]);
 
   return <FormMateri form={form} onSubmit={onSubmit} isLoading={isPendingCreateMateri} type="Create" preview={preview} setPreview={setPreview} />;
 }
