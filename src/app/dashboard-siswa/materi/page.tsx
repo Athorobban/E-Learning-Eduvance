@@ -1,4 +1,5 @@
 import { Metadata } from "next";
+import QueryProvider from "@/providers/query-provider";
 import MateriPage from "./_components/materi-siswa";
 
 export const metadata: Metadata = {
@@ -6,5 +7,9 @@ export const metadata: Metadata = {
 };
 
 export default function DashboardSiswaPage() {
-  return <MateriPage />;
+  return (
+    <QueryProvider>
+      <MateriPage />
+    </QueryProvider>
+  );
 }
