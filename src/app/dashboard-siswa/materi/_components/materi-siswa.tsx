@@ -37,7 +37,7 @@ export default function MateriPage() {
 
   if (isLoading) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[400px] text-slate-400">
+      <div className="flex flex-col items-center justify-center min-h-400 text-slate-400">
         <Loader2 className="size-10 animate-spin mb-4 text-primary" />
         <p className="font-medium animate-pulse">Menyiapkan materi untukmu...</p>
       </div>
@@ -70,11 +70,15 @@ export default function MateriPage() {
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
           {materiList?.map((m) => (
-            <Link key={m.id} href={`/dashboard-siswa/materi/${m.id}`} className="group flex flex-col bg-white rounded-2xl shadow-sm border border-slate-100 hover:shadow-md hover:border-blue-200 transition-all duration-300 overflow-hidden">
+            <Link
+              key={m.id}
+              href={`/dashboard-siswa/materi/detail-materi?id=${m.id}`}
+              className="group flex flex-col bg-white rounded-2xl shadow-sm border border-slate-100 hover:shadow-md hover:border-blue-200 transition-all duration-300 overflow-hidden"
+            >
               {/* Thumbnail Container */}
               <div className="relative h-44 bg-slate-100 overflow-hidden">
                 {m.thumbnail_url ? (
-                  <Image src={m.thumbnail_url} alt={m.judul} fill className="object-cover transition-transform duration-500 group-hover:scale-105" sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw" />
+                  <Image src={m.thumbnail_url} alt={m.judul} fill priority className="object-cover transition-transform duration-500 group-hover:scale-105" sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw" />
                 ) : (
                   <div className="w-full h-full flex flex-col items-center justify-center text-slate-400">
                     <BookOpen className="size-8 mb-2 opacity-50" />

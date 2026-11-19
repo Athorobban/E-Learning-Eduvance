@@ -11,37 +11,60 @@ import { cn } from "@/lib/utils";
 import { signOut, getProfileFromCookie } from "@/actions/auth-action";
 import { useAuthStore } from "@/stores/auth-store";
 
+const ROOT_DASHBOARD_ROUTES = new Set(["/", "/admin", "/dashboard-siswa"]);
+
+const normalizePath = (path: string): string => {
+  if (!path || path === "/") return "/";
+  return path.replace(/\/+$/, "");
+};
+
+const checkMenuActive = (currentPathname: string, menuUrl: string): boolean => {
+  const cleanPath = normalizePath(currentPathname);
+  const cleanUrl = normalizePath(menuUrl);
+
+  if (ROOT_DASHBOARD_ROUTES.has(cleanUrl)) {
+    return cleanPath === cleanUrl;
+  }
+
+  return cleanPath === cleanUrl || cleanPath.startsWith(`${cleanUrl}/`);
+};
+
 export function AppSidebar() {
   const { isMobile } = useSidebar();
   const pathname = usePathname();
 
   const profile = useAuthStore((state) => state.profile);
-  const setProfile = useAuthStore((state) => (state as any).setProfile);
+  const setProfile = useAuthStore((state) => ("setProfile" in state && typeof state.setProfile === "function" ? (state.setProfile as (data: typeof profile) => void) : undefined));
 
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(!profile);
 
   useEffect(() => {
+    let isMounted = true;
+
     const hydrateProfile = async () => {
-      setIsLoading(true);
       try {
         const serverProfile = await getProfileFromCookie();
-        if (serverProfile && setProfile) {
+        if (isMounted && serverProfile && setProfile) {
           setProfile(serverProfile);
         }
       } catch (error) {
         console.error("Gagal memuat profil:", error);
       } finally {
-        setIsLoading(false);
+        if (isMounted) setIsLoading(false);
       }
     };
 
     hydrateProfile();
+
+    return () => {
+      isMounted = false;
+    };
   }, [setProfile]);
 
   const userName = profile?.name || "Memuat...";
   const userRole = profile?.role || "Memuat...";
 
-  const currentMenu = SIDEBAR_MENU_LIST[profile?.role as SidebarMenuKey] || [];
+  const currentMenu = profile?.role && profile.role in SIDEBAR_MENU_LIST ? SIDEBAR_MENU_LIST[profile.role as SidebarMenuKey] : [];
 
   return (
     <Sidebar collapsible="icon" variant="floating">
@@ -59,29 +82,31 @@ export function AppSidebar() {
           </SidebarMenuItem>
         </SidebarMenu>
       </SidebarHeader>
+
       <SidebarContent className="mt-4">
         <SidebarGroup>
           <SidebarGroupContent className="flex flex-col gap-2">
             <SidebarMenu>
-              {/* Indikator Loading Menu */}
-              {isLoading && (
+              {isLoading ? (
                 <div className="flex justify-center py-4">
                   <Loader2 className="size-6 animate-spin text-slate-300" />
                 </div>
-              )}
-              {!isLoading &&
+              ) : (
                 currentMenu.map((item) => {
                   const Icon = item.icon;
-                  const isActive = pathname.startsWith(item.url); // Lebih aman menggunakan startsWith untuk nested route
+                  const isActive = checkMenuActive(pathname, item.url);
 
                   return (
                     <SidebarMenuItem key={item.title}>
                       <SidebarMenuButton
                         asChild
+                        isActive={isActive}
                         tooltip={item.title}
                         className={cn(
-                          "py-6 px-5 text-md transition-all duration-200",
-                          isActive ? "bg-primary text-primary-foreground font-semibold hover:bg-primary hover:text-primary-foreground shadow-sm" : "text-slate-600 hover:bg-slate-100",
+                          "py-6 px-5 text-md rounded-full transition-all duration-200 active:scale-[0.98]",
+                          isActive
+                            ? "bg-primary text-primary-foreground font-semibold shadow-sm hover:bg-primary hover:text-primary-foreground data-[active=true]:bg-primary data-[active=true]:text-primary-foreground"
+                            : "text-slate-600 hover:bg-slate-100 hover:text-slate-900",
                         )}
                       >
                         <Link href={item.url}>
@@ -91,11 +116,13 @@ export function AppSidebar() {
                       </SidebarMenuButton>
                     </SidebarMenuItem>
                   );
-                })}
+                })
+              )}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
+
       <SidebarFooter>
         <SidebarMenu>
           <SidebarMenuItem>

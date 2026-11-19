@@ -35,16 +35,23 @@ export const supabaseProxy = async (request: NextRequest) => {
   // KONDISI 1: USER BELUM LOGIN SAMA SEKALI
   // ==========================================
   if (!user) {
-    if (pathname.startsWith("/admin")) {
+    // 🔒 ATURAN BARU: Cegah akses tamu ke dashboard siswa
+    if (pathname.startsWith("/dashboard-siswa")) {
       const url = request.nextUrl.clone();
       url.pathname = "/login";
-      return NextResponse.redirect(url); // Wajib di-return agar proses berhenti di sini
+      return NextResponse.redirect(url);
     }
 
     if (pathname.startsWith("/admin/user")) {
       const url = request.nextUrl.clone();
       url.pathname = "/login-admin";
-      return NextResponse.redirect(url); // Wajib di-return
+      return NextResponse.redirect(url);
+    }
+
+    if (pathname.startsWith("/admin")) {
+      const url = request.nextUrl.clone();
+      url.pathname = "/login";
+      return NextResponse.redirect(url);
     }
   }
 
@@ -55,26 +62,42 @@ export const supabaseProxy = async (request: NextRequest) => {
     // Ambil data role spesifik dari tabel profiles
     const { data: profile } = await supabase.from("profiles").select("role").eq("id", user.id).single();
 
-    const role = profile?.role; // Nilainya antara 'Admin' atau 'User' sesuai DB Anda
+    const role = profile?.role; // 'Admin', 'Guru', atau 'Siswa'
 
-    // Jika User biasa mencoba menyusup ke halaman Admin
+    // 🔒 ATURAN BARU: Hanya "Siswa" yang boleh masuk ke /dashboard-siswa
+    if (pathname.startsWith("/dashboard-siswa") && role !== "Siswa") {
+      const url = request.nextUrl.clone();
+      url.pathname = "/login";
+      return NextResponse.redirect(url);
+    }
+
+    // 🔒 Mencegah "Siswa" menyusup ke halaman /admin
+    if (pathname.startsWith("/admin") && role === "Siswa") {
+      const url = request.nextUrl.clone();
+      url.pathname = "/dashboard-siswa";
+      return NextResponse.redirect(url);
+    }
+
+    // Logika hierarki spesifik untuk Admin vs Guru
     if (pathname.startsWith("/admin/user") && role !== "Admin") {
       const url = request.nextUrl.clone();
       url.pathname = "/admin";
       return NextResponse.redirect(url);
     }
 
-    // Jika Admin malah nyasar ke halaman dashboard User
-    if (pathname.startsWith("/dashboard") && role === "Admin") {
+    // Cegah user yang sudah login untuk mengakses halaman login/register lagi
+    if (pathname === "/login" || pathname === "/login-admin" || pathname === "/register") {
       const url = request.nextUrl.clone();
-      url.pathname = "/admin/user";
-      return NextResponse.redirect(url);
-    }
 
-    // Cegah user yang sudah login untuk mengakses halaman login lagi
-    if (pathname === "/login" || pathname === "/login-admin") {
-      const url = request.nextUrl.clone();
-      url.pathname = role === "Admin" ? "/admin/user" : "/admin";
+      // Arahkan ke rute yang tepat sesuai role
+      if (role === "Siswa") {
+        url.pathname = "/dashboard-siswa";
+      } else if (role === "Admin") {
+        url.pathname = "/admin/user";
+      } else {
+        url.pathname = "/admin"; // Guru
+      }
+
       return NextResponse.redirect(url);
     }
   }

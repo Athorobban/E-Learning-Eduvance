@@ -1,4 +1,5 @@
 import { Metadata } from "next";
+import QueryProvider from "@/providers/query-provider";
 import DetailMateriPage from "./_components/detail-materi";
 
 export const metadata: Metadata = {
@@ -6,9 +7,15 @@ export const metadata: Metadata = {
 };
 
 type PageProps = {
-  params: Promise<{ id: string }>;
+  searchParams: Promise<{ id?: string }>;
 };
 
-export default function DashboardSiswaPage({ params }: PageProps) {
-  return <DetailMateriPage params={params} />;
+export default async function DashboardDetailMateri({ searchParams }: PageProps) {
+  const { id } = await searchParams;
+
+  return (
+    <QueryProvider>
+      <DetailMateriPage initialMateriId={id} />
+    </QueryProvider>
+  );
 }

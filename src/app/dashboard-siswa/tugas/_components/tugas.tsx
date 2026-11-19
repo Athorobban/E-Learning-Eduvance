@@ -82,7 +82,7 @@ export default function TugasPage() {
             return (
               <Link
                 key={t.id}
-                href={`/dashboard-siswa/tugas/${t.id}`}
+                href={`/dashboard-siswa/tugas/answer-assignment?id=${t.id}`}
                 className={cn(
                   "group flex flex-col bg-white rounded-2xl p-5 shadow-sm border transition-all duration-300 hover:shadow-md",
                   isGraded ? "border-emerald-200 hover:border-emerald-400" : isSubmitted ? "border-blue-200 hover:border-blue-400" : "border-slate-100 hover:border-slate-300",
