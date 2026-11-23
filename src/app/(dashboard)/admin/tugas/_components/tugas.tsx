@@ -1,12 +1,13 @@
 "use client";
 
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import useDataTable from "@/hooks/use-data-table";
 import { createClient } from "@/lib/supabase/client";
 import { useQuery } from "@tanstack/react-query";
-import { FileText, Loader2, Pencil, Plus, Trash2 } from "lucide-react";
+import { ClipboardCheck, FileText, Loader2, Pencil, Plus, Trash2, Users } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import DialogCreateTugas from "./dialog-create-tugas";
@@ -26,6 +27,10 @@ type TugasRow = {
     name: string;
     role: string;
   } | null;
+  submissionStats: {
+    total: number;
+    ungraded: number;
+  };
 };
 
 export default function TugasManagement() {
@@ -60,21 +65,32 @@ export default function TugasManagement() {
         throw error;
       }
 
-      // Ambil nama pembuat tugas dari tabel profiles berdasarkan guru_id unik
-      const guruIds = Array.from(new Set((tugasRows || []).map((item) => item.guru_id).filter(Boolean)));
+      const rows = tugasRows || [];
+      const guruIds = Array.from(new Set(rows.map((item) => item.guru_id).filter(Boolean)));
+      const tugasIds = rows.map((item) => item.id);
+
+      const [profilesRes, submissionsRes] = await Promise.all([
+        guruIds.length > 0 ? supabase.from("profiles").select("id, name, role").in("id", guruIds) : Promise.resolve({ data: [] }),
+        tugasIds.length > 0 ? supabase.from("tugas_pengumpulan").select("tugas_id, status").in("tugas_id", tugasIds) : Promise.resolve({ data: [] }),
+      ]);
+
       const guruMap = new Map<string, { name: string; role: string }>();
+      (profilesRes.data || []).forEach((profile) => {
+        guruMap.set(profile.id, { name: profile.name, role: profile.role });
+      });
 
-      if (guruIds.length > 0) {
-        const { data: profilesData } = await supabase.from("profiles").select("id, name, role").in("id", guruIds);
+      const statsMap = new Map<string, { total: number; ungraded: number }>();
+      (submissionsRes.data || []).forEach((sub) => {
+        const current = statsMap.get(sub.tugas_id) ?? { total: 0, ungraded: 0 };
+        current.total += 1;
+        if (sub.status === "submitted") current.ungraded += 1;
+        statsMap.set(sub.tugas_id, current);
+      });
 
-        (profilesData || []).forEach((profile) => {
-          guruMap.set(profile.id, { name: profile.name, role: profile.role });
-        });
-      }
-
-      const mergedData: TugasRow[] = (tugasRows || []).map((item) => ({
+      const mergedData: TugasRow[] = rows.map((item) => ({
         ...item,
         guru: guruMap.get(item.guru_id) ?? null,
+        submissionStats: statsMap.get(item.id) ?? { total: 0, ungraded: 0 },
       }));
 
       return { data: mergedData, count: count ?? 0 };
@@ -98,7 +114,7 @@ export default function TugasManagement() {
       <div className="flex flex-col lg:flex-row justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold text-slate-900">Manajemen Tugas</h1>
-          <p className="text-sm text-slate-600">Atur dan kelola tugas untuk siswa.</p>
+          <p className="text-sm text-slate-600">Atur tugas dan nilai pengumpulan jawaban siswa.</p>
         </div>
 
         <div className="flex gap-2">
@@ -152,10 +168,29 @@ export default function TugasManagement() {
                       })
                     : "Tanpa batas waktu"}
                 </span>
+
+                {/* Info Pengumpulan Siswa */}
+                <div className="mt-3 flex items-center justify-between text-xs bg-slate-50 border border-slate-100 rounded-lg px-2.5 py-2">
+                  <span className="inline-flex items-center gap-1.5 text-slate-700 font-medium">
+                    <Users className="size-3.5 text-blue-600" />
+                    {item.submissionStats.total} Dikumpulkan
+                  </span>
+                  {item.submissionStats.ungraded > 0 && <span className="font-bold text-amber-700 bg-amber-100 px-2 py-0.5 rounded">{item.submissionStats.ungraded} Baru</span>}
+                </div>
+              </div>
+
+              {/* AKSI PENILAIAN */}
+              <div className="mt-4">
+                <Button asChild size="sm" variant="secondary" className="w-full font-semibold">
+                  <Link href={`/admin/tugas/pengumpulan?id=${item.id}`}>
+                    <ClipboardCheck className="size-4 mr-1.5 text-emerald-600" />
+                    Nilai Pengumpulan
+                  </Link>
+                </Button>
               </div>
 
               {/* FOOTER */}
-              <div className="mt-4 flex justify-between items-center pt-3 border-t border-slate-100">
+              <div className="mt-3 flex justify-between items-center pt-3 border-t border-slate-100">
                 <div className="text-xs">
                   {item.file_url && item.file_url !== "null" ? (
                     <a className="inline-flex items-center gap-1 text-blue-600 hover:underline font-medium" href={item.file_url} target="_blank" rel="noopener noreferrer">
